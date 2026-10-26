@@ -24,9 +24,11 @@ $aiReady = getenv('OPENAI_API_KEY') || (is_file(__DIR__ . '/../config.json') && 
     <label>Resolution
       <select id="dpi"><option value="150">Draft 150 dpi</option><option value="200" selected>Standard 200 dpi</option><option value="300">Print 300 dpi</option></select></label>
     <label>Type
-      <select id="mode"><option value="photo">Real photo (heavy cleanup)</option><option value="graphic">Graphic / drawing</option></select></label>
+      <select id="mode"><option value="photo">Real photo (heavy cleanup)</option><option value="graphic">Graphic / flat art</option><option value="lineart">Line art / ink drawing (clean up)</option></select></label>
     <label>Style
       <select id="style"><option value="outline">Coloring page (lines)</option><option value="gray">Just remove color (gray)</option><option value="tones">Flat gray tones (preview)</option></select></label>
+    <label>Plain background
+      <select id="bg"><option value="auto">Remove automatically</option><option value="keep">Keep (trace everything)</option></select></label>
     <label>Detail <output id="o_detail">5</output><input type="range" id="detail" min="1" max="10" value="5"></label>
     <label>Simplify <output id="o_simplify">4</output><input type="range" id="simplify" min="0" max="10" value="4"></label>
     <label>Interior detail <output id="o_interior">3</output><input type="range" id="interior" min="0" max="10" value="3" title="0 = open middles, 10 = detail everywhere"></label>

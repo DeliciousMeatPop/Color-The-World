@@ -167,7 +167,7 @@ addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && state === 'page') { e.preventDefault(); (e.shiftKey ? $('redo') : $('undo')).click(); }
 });
 
-const settings = () => ({mode: $('mode').value, style: $('style').value, detail: $('detail').value, simplify: $('simplify').value,
+const settings = () => ({mode: $('mode').value, style: $('style').value, bg: $('bg').value, detail: $('detail').value, simplify: $('simplify').value,
   interior: $('interior').value, weight: $('weight').value, inner: $('inner').value});
 
 $('generate').onclick = async () => {

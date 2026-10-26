@@ -113,9 +113,10 @@ class H(BaseHTTPRequestHandler):
         if not d:
             return self.send(404, {"error": "Unknown project, upload again."})
         out = os.path.join(d, "page.png")
-        t = ["--mode", "graphic" if f.get("mode") == "graphic" else "photo",
+        t = ["--mode", f.get("mode") if f.get("mode") in ("graphic", "lineart") else "photo",
              "--detail", clamp(f.get("detail"), 5, 1, 10), "--weight", clamp(f.get("weight"), 5, 1, 10),
              "--inner", clamp(f.get("inner"), 2, 1, 10), "--interior", clamp(f.get("interior"), 3, 0, 10),
+             "--bg", "keep" if f.get("bg") == "keep" else "auto",
              "--style", f.get("style") if f.get("style") in ("gray", "tones") else "outline",
              "--simplify", clamp(f.get("simplify"), 4, 0, 10)]
         if a == "generate":
