@@ -9,7 +9,7 @@ let undo = [], redo = [], cur = null;   // PNG blobs of page states
 const status = (m, err) => { $('status').textContent = m || ''; $('status').className = err ? 'err' : ''; };
 const ASPECT = () => ({portrait: 8.5 / 11, landscape: 11 / 8.5, square: 1})[$('orient').value];
 
-for (const k of ['detail', 'simplify', 'weight', 'brush'])
+for (const k of ['detail', 'simplify', 'interior', 'weight', 'inner', 'brush'])
   $(k).addEventListener('input', () => $('o_' + k).textContent = $(k).value);
 
 async function api(action, fields, files) {
@@ -167,7 +167,8 @@ addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && state === 'page') { e.preventDefault(); (e.shiftKey ? $('redo') : $('undo')).click(); }
 });
 
-const settings = () => ({mode: $('mode').value, detail: $('detail').value, simplify: $('simplify').value, weight: $('weight').value});
+const settings = () => ({mode: $('mode').value, style: $('style').value, bg: $('bg').value, detail: $('detail').value, simplify: $('simplify').value,
+  interior: $('interior').value, weight: $('weight').value, inner: $('inner').value});
 
 $('generate').onclick = async () => {
   if (!srcImg) return;
@@ -180,10 +181,18 @@ $('generate').onclick = async () => {
     const was = state;
     state = 'empty';                       // force fresh canvas size / history
     await setPage(await api('generate', f));
+    if ($('style').value === 'outline' && inkFraction() < 0.002) status('Page came out nearly blank. Try more Detail, less Simplify, or more Interior detail.', true);
   } catch (e) { status(e.message, true); if (!cur) showCrop(); }
   busy(false);
 };
 let lastRect = '';
+function inkFraction() {   // share of dark pixels, sampled
+  const t = document.createElement('canvas'); t.width = 200; t.height = Math.round(200 * view.height / view.width);
+  const c = t.getContext('2d'); c.drawImage(view, 0, 0, t.width, t.height);
+  const d = c.getImageData(0, 0, t.width, t.height).data; let n = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] < 160) n++;
+  return n / (t.width * t.height);
+}
 
 async function areaOp(action, extra, msg) {
   const m = await canvasBlob(mask);
