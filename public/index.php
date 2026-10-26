@@ -25,9 +25,13 @@ $aiReady = getenv('OPENAI_API_KEY') || (is_file(__DIR__ . '/../config.json') && 
       <select id="dpi"><option value="150">Draft 150 dpi</option><option value="200" selected>Standard 200 dpi</option><option value="300">Print 300 dpi</option></select></label>
     <label>Type
       <select id="mode"><option value="photo">Real photo (heavy cleanup)</option><option value="graphic">Graphic / drawing</option></select></label>
+    <label>Style
+      <select id="style"><option value="outline">Coloring page (lines)</option><option value="gray">Just remove color (gray)</option><option value="tones">Flat gray tones (preview)</option></select></label>
     <label>Detail <output id="o_detail">5</output><input type="range" id="detail" min="1" max="10" value="5"></label>
     <label>Simplify <output id="o_simplify">4</output><input type="range" id="simplify" min="0" max="10" value="4"></label>
-    <label>Line weight <output id="o_weight">3</output><input type="range" id="weight" min="1" max="10" value="3"></label>
+    <label>Interior detail <output id="o_interior">3</output><input type="range" id="interior" min="0" max="10" value="3" title="0 = open middles, 10 = detail everywhere"></label>
+    <label>Outline weight <output id="o_weight">5</output><input type="range" id="weight" min="1" max="10" value="5"></label>
+    <label>Inner line weight <output id="o_inner">2</output><input type="range" id="inner" min="1" max="10" value="2"></label>
     <button id="generate" class="primary" disabled>Make coloring page</button>
     <p class="hint" id="cropHint">Drag the box on the picture to choose just the part you want.</p>
   </section>

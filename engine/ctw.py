@@ -97,6 +97,11 @@ def params_from(args, mode):
         "edge_min_len": max(8, int(60 - detail * 5)),  # drop short edge bits
         "min_area": int(simplify ** 2 * 25),         # merge regions below this
         "mode_sigma": 1.0 + simplify * 0.35,         # label-map smoothing
+        "k_coarse": max(3, min(8, 2 + detail // 2)),  # big shapes for the bold outlines
+        "coarse_sigma": 2.0 + simplify * 0.5,
+        "coarse_area": max(300, int(simplify ** 2 * 100)),
+        # how far (work px) fine detail may sit from a bold outline; 10 = unlimited
+        "band": None if args.interior >= 10 else 6 + args.interior * 10,
     }
 
 
@@ -172,7 +177,7 @@ def drop_small_components(binary, min_len):
 
 
 def trace_lines(bgr, p):
-    """Return a uint8 image, 255 where a thin outline should be, at bgr's size."""
+    """Return (coarse, fine) uint8 line maps, 255 on a line, at bgr's size."""
     graphic = p["mode"] == "graphic"
     if graphic:
         base = cv2.bilateralFilter(bgr, 5, 25, 5)
@@ -185,41 +190,67 @@ def trace_lines(bgr, p):
     lbl = smooth_labels(lbl, k, 0.8 if graphic else p["mode_sigma"])
     lbl = merge_small_regions(lbl, p["min_area"] // (4 if graphic else 1))
 
-    # region borders
-    border = np.zeros(lbl.shape, np.uint8)
-    border[:, 1:] |= (lbl[:, 1:] != lbl[:, :-1]).astype(np.uint8)
-    border[1:, :] |= (lbl[1:, :] != lbl[:-1, :]).astype(np.uint8)
-    border *= 255
-
-    # extra internal detail from edges of a lightly smoothed grayscale
+    # fine detail: region borders + internal edges
+    fine = np.zeros(lbl.shape, np.uint8)
+    fine[:, 1:] |= (lbl[:, 1:] != lbl[:, :-1]).astype(np.uint8)
+    fine[1:, :] |= (lbl[1:, :] != lbl[:-1, :]).astype(np.uint8)
+    fine *= 255
     gray = cv2.cvtColor(base if graphic else bgr, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (0, 0), 1.2 if not graphic else 0.8)
     hi = p["edge_hi"] if not graphic else max(60, p["edge_hi"] - 40)
     edges = cv2.Canny(gray, hi * 0.45, hi)
-    edges = drop_small_components(edges, p["edge_min_len"])
+    fine = cv2.bitwise_or(fine, drop_small_components(edges, p["edge_min_len"]))
 
-    lines = cv2.bitwise_or(border, edges)
-    lines = drop_small_components(lines, max(6, p["edge_min_len"] // 2))
-    return lines
+    # bold structure: borders of a few big, heavily simplified shapes
+    kc = p["k_coarse"]
+    lc = kmeans_labels(lab, kc)
+    lc = smooth_labels(lc, kc, p["coarse_sigma"])
+    lc = merge_small_regions(lc, p["coarse_area"])
+    coarse = np.zeros(lc.shape, np.uint8)
+    coarse[:, 1:] |= (lc[:, 1:] != lc[:, :-1]).astype(np.uint8)
+    coarse[1:, :] |= (lc[1:, :] != lc[:-1, :]).astype(np.uint8)
+    coarse = drop_small_components(coarse * 255, 30)
+
+    # keep fine detail only near the bold outlines; the middle of shapes stays open
+    if p["band"] is not None:
+        dist = cv2.distanceTransform((coarse == 0).astype(np.uint8), cv2.DIST_L2, 3)
+        fine = np.where(dist <= p["band"], fine, 0).astype(np.uint8)
+    fine = drop_small_components(fine, max(6, p["edge_min_len"] // 2))
+    return coarse, fine
 
 
-def trace_to_page(base_bgr, page_size, dpi, p, weight):
-    """Trace at working size, scale to page size, thicken, return gray page (255=paper)."""
+def upscale_lines(lines, size, thick):
+    big = cv2.resize(lines, size, interpolation=cv2.INTER_LINEAR)
+    big = (big > 60).astype(np.uint8) * 255
+    if thick > 1:
+        big = cv2.dilate(big, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (thick, thick)))
+    return big
+
+
+def trace_to_page(base_bgr, page_size, dpi, p, weight, inner):
+    """Trace at working size, scale up, draw bold outlines + thinner detail (255 = paper)."""
     pw, ph = page_size
     scale = min(1.0, WORK_LONG_SIDE / max(pw, ph))
     ww, wh = max(2, int(pw * scale)), max(2, int(ph * scale))
     small = cv2.resize(base_bgr, (ww, wh), interpolation=cv2.INTER_AREA)
-    lines = trace_lines(small, p)
+    coarse, fine = trace_lines(small, p)
 
-    big = cv2.resize(lines, (pw, ph), interpolation=cv2.INTER_LINEAR)
-    big = (big > 60).astype(np.uint8) * 255
-    t = max(1, int(round(weight * dpi / 100.0)))
-    if t > 1:
-        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (t, t))
-        big = cv2.dilate(big, k)
+    px = dpi / 100.0
+    big = cv2.bitwise_or(upscale_lines(coarse, (pw, ph), max(1, int(round(weight * px)))),
+                         upscale_lines(fine, (pw, ph), max(1, int(round(inner * px)))))
     big = cv2.GaussianBlur(big, (0, 0), 0.8)          # soft edge for clean printing
     big = np.clip((big.astype(np.float32) - 40) * 255 / 175, 0, 255).astype(np.uint8)
     return 255 - big
+
+
+def tone_page(base_bgr, style):
+    """No lines: just remove colour (gray) or reduce it to a few flat tones."""
+    g = cv2.cvtColor(base_bgr, cv2.COLOR_BGR2GRAY)
+    g = cv2.createCLAHE(2.0, (8, 8)).apply(g)
+    if style == "tones":
+        g = cv2.GaussianBlur(g, (0, 0), 3)
+        g = (np.round(g / 255.0 * 3) * 85).astype(np.uint8)   # 4 flat grays
+    return g
 
 
 # ------------------------------------------------------------ sub-commands
@@ -280,12 +311,16 @@ def cmd_generate(a):
     save_png(base, os.path.join(a.proj, "base.png"))
 
     p = params_from(a, a.mode)
-    page = trace_to_page(base, page_size, dpi, p, a.weight)
+    if a.style == "outline":
+        page = trace_to_page(base, page_size, dpi, p, a.weight, a.inner)
+    else:
+        page = tone_page(base, a.style)
     save_png(page, a.out, dpi)
     meta = load_meta(a.proj)
     meta.update(w=page_size[0], h=page_size[1], dpi=dpi, orient=a.orient)
     save_meta(a.proj, meta)
-    out(w=page_size[0], h=page_size[1])
+    ink = float((page < 128).mean())
+    out(w=page_size[0], h=page_size[1], ink=round(ink, 4))
 
 
 def load_base_and_page(a):
@@ -318,7 +353,7 @@ def cmd_retrace(a):
     x0, x1 = max(0, xs.min() - pad), min(size[0], xs.max() + pad)
     y0, y1 = max(0, ys.min() - pad), min(size[1], ys.max() + pad)
     crop = base[y0:y1, x0:x1]
-    sub = trace_to_page(crop, (x1 - x0, y1 - y0), meta["dpi"], p, a.weight) \
+    sub = trace_to_page(crop, (x1 - x0, y1 - y0), meta["dpi"], p, a.weight, a.inner) \
         if crop.shape[0] > 8 and crop.shape[1] > 8 else None
     if sub is None:
         fail("Selected area is too small.")
@@ -450,7 +485,10 @@ def main():
         p.add_argument("--out")
         p.add_argument("--mode", default="photo", choices=["photo", "graphic"])
         p.add_argument("--detail", type=int, default=5)
-        p.add_argument("--weight", type=int, default=3)
+        p.add_argument("--weight", type=int, default=5)
+        p.add_argument("--inner", type=int, default=2)
+        p.add_argument("--interior", type=int, default=3)
+        p.add_argument("--style", default="outline", choices=["outline", "gray", "tones"])
         p.add_argument("--simplify", type=int, default=4)
 
     p = sub.add_parser("ingest"); p.add_argument("--proj", required=True); p.add_argument("--src", required=True)

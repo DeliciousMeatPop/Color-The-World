@@ -3,7 +3,7 @@
 Turn photos and graphics into printable black-and-white coloring book pages.
 
 1. Drop in a picture, drag the box to pick the part you want (locked to the page shape).
-2. **Make coloring page**: local OpenCV tracing (colour regions + outlines, tiny bits merged away).
+2. **Make coloring page**: local OpenCV tracing. Bold outlines come from a few big simplified shapes; thinner inner lines are kept only near those outlines, so the middle of shapes stays open (**Interior detail** 0-10). **Style** can also just remove color (gray / flat tones) with no lines.
 3. Paint a red **selection** over anything you want to change, then:
    - **Re-trace area**: redo just that spot using the current Detail / Simplify / Line weight sliders
    - **Remove specks**, **Blank out**, or **AI redo area** (optional, needs a key)

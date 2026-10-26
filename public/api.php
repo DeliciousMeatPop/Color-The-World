@@ -52,7 +52,10 @@ function trace_args() {
     $mode = ($_POST['mode'] ?? 'photo') === 'graphic' ? 'graphic' : 'photo';
     return ['--mode', $mode,
         '--detail', int_param('detail', 5, 1, 10),
-        '--weight', int_param('weight', 3, 1, 10),
+        '--weight', int_param('weight', 5, 1, 10),
+        '--inner', int_param('inner', 2, 1, 10),
+        '--interior', int_param('interior', 3, 0, 10),
+        '--style', in_array($_POST['style'] ?? '', ['gray', 'tones'], true) ? $_POST['style'] : 'outline',
         '--simplify', int_param('simplify', 4, 0, 10)];
 }
 
