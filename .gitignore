@@ -1,0 +1,5 @@
+.venv/
+storage/*
+!storage/.gitkeep
+config.json
+__pycache__/

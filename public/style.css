@@ -1,0 +1,26 @@
+:root{--bg:#f4f1ea;--panel:#fff;--ink:#222;--mute:#777;--acc:#2a7de1;--line:#d8d3c8}
+@media (prefers-color-scheme:dark){:root{--bg:#1e1f22;--panel:#2a2b30;--ink:#eee;--mute:#999;--line:#444}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,sans-serif}
+header{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline}
+h1{margin:0;font-size:20px}.sub{color:var(--mute)}
+main{display:flex;height:calc(100vh - 49px)}
+#panel{width:290px;flex:none;overflow:auto;padding:12px;background:var(--panel);border-right:1px solid var(--line)}
+#panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:14px 0 6px}
+#panel label{display:block;margin:8px 0;font-size:13px}
+#panel label output{float:right;color:var(--mute)}
+select,input[type=text]{width:100%;padding:6px;margin-top:3px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px}
+input[type=range]{width:100%}
+button{width:100%;margin:4px 0;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);cursor:pointer;font:inherit}
+button:hover:not(:disabled){border-color:var(--acc)}button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:4px}.tools button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.row{display:flex;gap:6px}.drop{border:2px dashed var(--line);border-radius:8px;padding:18px 8px;text-align:center;cursor:pointer;color:var(--mute)}
+.drop.over{border-color:var(--acc)}.hint{font-size:12px;color:var(--mute);margin:6px 0}
+#status{min-height:1.4em;font-size:13px}#status.err{color:#d33}
+#stage{flex:1;overflow:auto;display:flex;padding:16px}
+#wrap{position:relative;margin:auto;line-height:0;box-shadow:0 2px 14px #0004;background:#fff}
+#wrap canvas{max-width:100%;max-height:calc(100vh - 85px);width:auto;height:auto;touch-action:none}
+#wrap #overlay{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;max-height:none}
+@media (max-width:760px){main{flex-direction:column;height:auto}#panel{width:auto;border-right:0}#wrap canvas{max-height:none}}
+@media print{header,#panel{display:none}main{display:block;height:auto}#stage{padding:0;display:block}#wrap{box-shadow:none}#overlay{display:none}#wrap canvas{max-height:none;max-width:100%;height:auto}}
