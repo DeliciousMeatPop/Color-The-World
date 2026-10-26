@@ -11,7 +11,7 @@ Turn photos and graphics into printable black-and-white coloring book pages.
 
 ## Run
 
-Needs Python 3 and PHP 8+ on your PATH.
+Needs Python 3. PHP is optional: without it `run.py` serves the app with the built-in `server.py` (same features). Force that with `python run.py --python`.
 
     run.bat        (Windows)      .\run.ps1      ./run.sh      python run.py
 
